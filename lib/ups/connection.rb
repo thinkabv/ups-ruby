@@ -28,11 +28,13 @@ module UPS
     SHIP_VERSION = 'v2403'
     TRACK_VERSION = 'v1'
     LABEL_VERSION = 'v1'
+    PAPERLESS_VERSION = 'v2'
 
     RATE_PATH = "/api/rating/#{RATE_VERSION}/Shop"
     SHIP_PATH = "/api/shipments/#{SHIP_VERSION}/ship"
     TRACK_PATH = "/api/track/#{TRACK_VERSION}/details"
     LABEL_PATH = "/api/labels/#{LABEL_VERSION}/recovery"
+    PAPERLESS_UPLOAD_PATH = "/api/paperlessdocuments/#{PAPERLESS_VERSION}/upload"
 
     DEFAULT_PARAMS = {
       test_mode: false
@@ -121,6 +123,25 @@ module UPS
       UPS::Parsers::LabelParser.new(response.body)
     end
 
+    # Uploads a document (e.g. a commercial invoice) to the UPS Paperless
+    # Document API and returns a parser exposing the created DocumentID.
+    #
+    # A pre-configured {Builders::PaperlessDocumentBuilder} object can be passed
+    # as the first option or a block yielded to configure a new one.
+    #
+    # @param [Builders::PaperlessDocumentBuilder] builder A pre-configured builder
+    # @yield [builder] A PaperlessDocumentBuilder for configuring the upload
+    def paperless_document_upload(builder = nil)
+      if builder.nil? && block_given?
+        builder = UPS::Builders::PaperlessDocumentBuilder.new
+        yield builder
+      end
+
+      response = get_response(PAPERLESS_UPLOAD_PATH, builder.as_json, 'post',
+                              'ShipperNumber' => builder.shipper_number)
+      UPS::Parsers::PaperlessDocumentParser.new(response.body)
+    end
+
     # Authorizes the connection with the UPS API
     #
     # @param [String] account_number Account number to use for the request
@@ -194,7 +215,7 @@ module UPS
     # @param [Optional, Hash] body The body to send with the request
     # @param [Optional, String] method The method type to use for the request
     # @return [Excon::Response] The response from the request
-    def get_response(path, body = {}, method = 'post')
+    def get_response(path, body = {}, method = 'post', extra_headers = {})
       access_token = get_access_token
 
       headers = {
@@ -202,7 +223,7 @@ module UPS
         'Authorization' => "Bearer #{access_token}",
         'transId' => SecureRandom.hex(16), # Unique identifier for this request
         'transactionSrc' => 'testing' # Identifies client/source app that is calling, UPS has default of 'testing' (sometimes)
-      }
+      }.merge(extra_headers)
 
       if method.downcase == 'get'
         Excon.get(
