@@ -3,16 +3,20 @@
 module UPS
   module Parsers
     # Parses the response of a UPS Paperless Document API upload and exposes
-    # the returned Forms History DocumentID.
+    # the returned Forms History DocumentID(s).
     class PaperlessDocumentParser < BaseParser
       def success?
-        !document_id.nil?
+        document_ids.any?
       end
 
-      # @return [String, nil] the 26-character Forms History DocumentID
+      # @return [Array<String>] all returned Forms History DocumentIDs
+      def document_ids
+        Array(parsed_response.dig(:UploadResponse, :FormsHistoryDocumentID, :DocumentID))
+      end
+
+      # @return [String, nil] the first DocumentID (convenience for single-file uploads)
       def document_id
-        id = parsed_response.dig(:UploadResponse, :FormsHistoryDocumentID, :DocumentID)
-        id.is_a?(Array) ? id.first : id
+        document_ids.first
       end
     end
   end
