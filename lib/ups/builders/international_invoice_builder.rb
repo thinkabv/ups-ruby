@@ -17,7 +17,11 @@ module UPS
       end
 
       def form_type
-        element_with_value('FormType', '01')
+        element_with_value('FormType', opts[:form_type] || '01')
+      end
+
+      def user_created_form
+        element_with_value('UserCreatedForm', 'DocumentID' => Array(opts[:document_id]))
       end
 
       def invoice_number
@@ -67,16 +71,13 @@ module UPS
         international_form[name].merge!(form_type,
                                         invoice_date,
                                         reason_for_export,
-                                        currency_code,
-                                        freight_charge,
-                                        discount)
+                                        currency_code)
 
-        if opts[:invoice_number]
-          international_form[name].merge!(invoice_number)
-        end
-        if opts[:terms_of_shipment]
-          international_form[name].merge!(terms_of_shipment)
-        end
+        international_form[name].merge!(freight_charge) if opts[:freight_charge]
+        international_form[name].merge!(discount) if opts[:discount]
+        international_form[name].merge!(invoice_number) if opts[:invoice_number]
+        international_form[name].merge!(terms_of_shipment) if opts[:terms_of_shipment]
+        international_form[name].merge!(user_created_form) if opts[:document_id]
 
         international_form[name]['Product'] = product_details
         international_form

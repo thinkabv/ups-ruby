@@ -30,6 +30,7 @@ module UPS
     autoload :ShipParser,          'ups/parsers/ship_parser'
     autoload :TrackParser,         'ups/parsers/track_parser'
     autoload :LabelParser,         'ups/parsers/label_parser'
+    autoload :PaperlessDocumentParser, 'ups/parsers/paperless_document_parser'
   end
 
   module Builders
@@ -42,5 +43,6 @@ module UPS
     autoload :OrganisationBuilder,                'ups/builders/organisation_builder'
     autoload :ShipperBuilder,                     'ups/builders/shipper_builder'
     autoload :LabelRecoveryRequestBuilder,        'ups/builders/label_recovery_request_builder'
+    autoload :PaperlessDocumentBuilder,           'ups/builders/paperless_document_builder'
   end
 end
