@@ -4,7 +4,7 @@ require "base64"
 describe UPS::Builders::PaperlessDocumentBuilder do
   subject do
     UPS::Builders::PaperlessDocumentBuilder.new.tap do |builder|
-      builder.add_shipper_number("8Y7F40")
+      builder.add_shipper_number("1004YY")
       builder.add_file(file: "PDF-BYTES", file_name: "invoice-1.pdf")
     end
   end
@@ -12,8 +12,8 @@ describe UPS::Builders::PaperlessDocumentBuilder do
   let(:upload) { subject.as_json["UploadRequest"] }
 
   it "sets the shipper number" do
-    expect(subject.shipper_number).must_equal "8Y7F40"
-    expect(upload["ShipperNumber"]).must_equal "8Y7F40"
+    expect(subject.shipper_number).must_equal "1004YY"
+    expect(upload["ShipperNumber"]).must_equal "1004YY"
   end
 
   it "base64 encodes the file as a commercial invoice" do
