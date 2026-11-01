@@ -1,55 +1,52 @@
 require "spec_helper"
-require "support/shipping_options"
 
 describe UPS::Connection do
-  include ShippingOptions
+  before { Excon.defaults[:mock] = true }
+  after { Excon.stubs.clear }
 
-  before do
-    Excon.defaults[:mock] = true
+  let(:stub_path) { File.expand_path("../../stubs", __dir__) }
+  let(:connection) do
+    UPS::Connection.new(test_mode: true).tap { |connection| connection.authorize("ACCOUNT", "CLIENT", "SECRET", true) }
   end
 
-  after do
-    Excon.stubs.clear
-  end
-
-  let(:stub_path) { File.expand_path("../../../stubs", __FILE__) }
-  let(:server) { UPS::Connection.new(test_mode: true) }
-  let(:supplied_package) { package }
-
-  describe "if tracking shipment" do
-    subject do
-      server.authorize ENV["UPS_ACCOUNT_NUMBER"], ENV["UPS_CLIENT_ID"], ENV["UPS_CLIENT_SECRET"], true
-      server.track "1Z12345E6692804405"
+  describe "a delivered package" do
+    before do
+      Excon.stub({method: :get}, {status: 200, body: File.read("#{stub_path}/track_success.json")})
     end
 
-    describe "successful track response" do
-      before do
-        Excon.stub({method: :get}, lambda { |params|
-          {body: File.read("#{stub_path}/track_success.json"), status: 200}
-        })
-      end
+    subject { connection.track "1Z12345E6692804405" }
 
-      it "returns the tracking status" do
-        expect(subject.as_json).wont_be_empty
-        expect(subject.as_json).must_equal(
-          status_date: Date.parse("2010-06-10"),
-          status_type_description: "DELIVERED",
-          status_type_code: "D"
-        )
-      end
+    it "reports the latest activity" do
+      expect(subject.success?).must_equal true
+      expect(subject.found?).must_equal true
+      expect(subject.delivered?).must_equal true
+      expect(subject.as_json).must_equal(
+        status_date: Date.parse("2010-06-10"),
+        status_type_description: "DELIVERED",
+        status_type_code: "D"
+      )
     end
   end
 
-  describe "if tracking shipment with no tracking number" do
-    subject do
-      server.authorize ENV["UPS_ACCOUNT_NUMBER"], ENV["UPS_CLIENT_ID"], ENV["UPS_CLIENT_SECRET"], true
-      server.track ""
+  describe "a number UPS does not know yet" do
+    before do
+      Excon.stub({method: :get}, {status: 200, body: File.read("#{stub_path}/track_not_found.json")})
     end
 
-    it "raises an error" do
-      assert_raises UPS::Exceptions::InvalidAttributeError do
-        subject
-      end
+    subject { connection.track "1Z12345E6692804405" }
+
+    it "has no activity" do
+      expect(subject.success?).must_equal true
+      expect(subject.found?).must_equal false
+      expect(subject.delivered?).must_equal false
+      expect(subject.status_date).must_be_nil
+      expect(subject.status_type_description).must_be_nil
+    end
+  end
+
+  describe "without a tracking number" do
+    it "raises" do
+      assert_raises(UPS::Exceptions::InvalidAttributeError) { connection.track "" }
     end
   end
 end

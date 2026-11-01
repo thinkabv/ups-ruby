@@ -2,327 +2,166 @@
 
 require "uri"
 require "excon"
-require "digest/md5"
-require "ox"
-require "base64"
 require "json"
+require "base64"
+require "securerandom"
 
 module UPS
-  # The {Connection} class acts as the main entry point to performing rate and
-  # ship operations against the UPS API.
+  # Entry point to the UPS REST API: holds the OAuth client-credentials token
+  # and performs the rate, ship, track, label, paperless and pickup calls.
   #
-  # @author Paul Trippett
-  # @abstract
-  # @since 0.1.0
-  # @attr [String] url The base url to use either TEST_URL or LIVE_URL
+  #   connection = UPS::Connection.new(test_mode: true, transaction_source: "my-app")
+  #   connection.authorize("ACCOUNT_NUMBER", "CLIENT_ID", "CLIENT_SECRET")
+  #   rates = connection.rates { |builder| ... }
+  #
+  # The token is requested on the first call and requested again once it has
+  # expired, so one Connection can serve a process for its whole lifetime.
   class Connection
-    attr_accessor :url,
-      :account_number,
-      :client_id,
-      :client_secret
-
     TEST_URL = "https://wwwcie.ups.com"
     LIVE_URL = "https://onlinetools.ups.com"
 
-    RATE_VERSION = "v2403"
-    SHIP_VERSION = "v2403"
-    TRACK_VERSION = "v1"
-    LABEL_VERSION = "v1"
-    PAPERLESS_VERSION = "v2"
+    TOKEN_PATH = "/security/v1/oauth/token"
+    # v2409 is the only version UPS lists for rating, shipping and pickup
+    # (UPS-API/api-documentation, October 2026); the others are fixed at v1/v2.
+    RATE_PATH = "/api/rating/v2409/Shop"
+    SHIP_PATH = "/api/shipments/v2409/ship"
+    TRACK_PATH = "/api/track/v1/details"
+    LABEL_PATH = "/api/labels/v1/recovery"
+    PAPERLESS_UPLOAD_PATH = "/api/paperlessdocuments/v2/upload"
+    PICKUP_PATH = "/api/pickupcreation/v2409/pickup"
 
-    RATE_PATH = "/api/rating/#{RATE_VERSION}/Shop"
-    SHIP_PATH = "/api/shipments/#{SHIP_VERSION}/ship"
-    TRACK_PATH = "/api/track/#{TRACK_VERSION}/details"
-    LABEL_PATH = "/api/labels/#{LABEL_VERSION}/recovery"
-    PAPERLESS_UPLOAD_PATH = "/api/paperlessdocuments/#{PAPERLESS_VERSION}/upload"
+    # Seconds before the reported expiry at which a token counts as expired,
+    # so a request never leaves with a token that dies in flight.
+    TOKEN_EXPIRY_MARGIN = 60
 
-    DEFAULT_PARAMS = {
-      test_mode: false
-    }
-
-    # Initializes a new {Connection} object
-    #
-    # @param [Hash] params The initialization options
-    # @option params [Boolean] :test_mode If TEST_URL should be used for
-    #   requests to the UPS URL
-    def initialize(params = {})
-      params = DEFAULT_PARAMS.merge(params)
-      self.url = params[:test_mode] ? TEST_URL : LIVE_URL
-
-      @token_data = nil
+    Token = Struct.new(:access_token, :expires_at) do
+      def expired?(now) = now >= expires_at
     end
 
-    # Makes a request to fetch Rates for a shipment.
-    #
-    # A pre-configured {Builders::RateBuilder} object can be passed as the first
-    # option or a block yielded to configure a new {Builders::RateBuilder}
-    # object.
-    #
-    # @param [Builders::RateBuilder] rate_builder A pre-configured
-    #   {Builders::RateBuilder} object to use
-    # @yield [rate_builder] A RateBuilder object for configuring
-    #   the shipment information sent
-    def rates(rate_builder = nil)
-      if rate_builder.nil? && block_given?
-        rate_builder = UPS::Builders::RateBuilder.new
-        yield rate_builder
+    attr_reader :url, :account_number, :client_id, :client_secret, :transaction_source
+
+    # @param test_mode [Boolean] use the UPS customer integration environment
+    # @param transaction_source [String] the `transactionSrc` header UPS asks
+    #   every client to send, identifying the calling application
+    # @param clock [#call] returns the current Time; injectable for tests
+    def initialize(test_mode: false, transaction_source: "ups-ruby", clock: Time.method(:now))
+      @url = test_mode ? TEST_URL : LIVE_URL
+      @transaction_source = transaction_source
+      @clock = clock
+      @token = nil
+    end
+
+    # Stores the credentials. The token itself is requested on the first call
+    # that needs it. With `mock` no token is ever requested (for tests).
+    def authorize(account_number, client_id, client_secret, mock = false)
+      if !mock && [account_number, client_id, client_secret].any? { |value| value.nil? || value.empty? }
+        raise Exceptions::AuthorizationError, "Missing account_number, client_id, or client_secret"
       end
 
-      response = get_response(RATE_PATH, rate_builder.as_json)
-      UPS::Parsers::RatesParser.new(response.body)
+      @account_number = account_number
+      @client_id = client_id
+      @client_secret = client_secret
+      @token = Token.new("test_token", @clock.call + 6 * 365 * 24 * 3600) if mock
+      nil
     end
 
-    # Makes a request to ship a package
-    #
-    # A pre-configured {Builders::ShipBuilder} object can be passed as
-    # the first option or a block yielded to configure a new
-    # {Builders::ShipBuilder} object.
-    #
-    # @param [Builders::ShipBuilder] confirm_builder A pre-configured
-    #   {Builders::ShipBuilder} object to use
-    # @yield [ship_builder] A ShipBuilder object for configuring
-    #   the shipment information sent
-    def ship(confirm_builder = nil)
-      if confirm_builder.nil? && block_given?
-        confirm_builder = Builders::ShipBuilder.new
-        yield confirm_builder
-      end
+    def authorized? = !@token.nil? || !client_id.nil?
 
-      make_confirm_request(confirm_builder)
+    # Shops rates for a shipment. Yields a {Builders::RateBuilder} unless one is given.
+    def rates(builder = nil, &block)
+      Parsers::RatesParser.new(post(RATE_PATH, build(Builders::RateBuilder, builder, &block).as_json))
     end
 
-    # Makes a request to Track the status for a shipment.
-    #
-    # @param [String] number Tracking number to request status for
+    # Books a shipment and returns its labels. Yields a {Builders::ShipBuilder} unless one is given.
+    def ship(builder = nil, &block)
+      Parsers::ShipParser.new(post(SHIP_PATH, build(Builders::ShipBuilder, builder, &block).as_json))
+    end
+
+    # Fetches the activity of a package by tracking number.
     def track(number)
-      if number.empty?
-        fail Exceptions::InvalidAttributeError, "Tracking number is required"
-      end
+      raise Exceptions::InvalidAttributeError, "Tracking number is required" if number.nil? || number.empty?
 
-      response = get_response(TRACK_PATH + "/#{number}", {}, "GET")
-      UPS::Parsers::TrackParser.new(response.body)
+      Parsers::TrackParser.new(get("#{TRACK_PATH}/#{number}"))
     end
 
-    # Makes a request for a label of a shipment.
-    #
-    # A pre-configured {Builders::LabelRecoveryRequestBuilder} object can be passed as the first
-    # option or a block yielded to configure a new {Builders::LabelRecoveryRequestBuilder}
-    # object.
-    #
-    # @param [Builders::LabelRecoveryRequestBuilder] label_builder A pre-configured
-    #   {Builders::LabelRecoveryRequestBuilder} object to use
-    # @yield [label_builder] A LabelRecoveryRequestBuilder object for configuring
-    #   the label request information sent
-    def label(label_builder = nil)
-      if label_builder.nil? && block_given?
-        label_builder = UPS::Builders::LabelRecoveryRequestBuilder.new
-        yield label_builder
-      end
-
-      response = get_response(LABEL_PATH, label_builder.as_json)
-      UPS::Parsers::LabelParser.new(response.body)
+    # Recovers the label of an earlier shipment. Yields a {Builders::LabelRecoveryRequestBuilder} unless one is given.
+    def label(builder = nil, &block)
+      Parsers::LabelParser.new(post(LABEL_PATH, build(Builders::LabelRecoveryRequestBuilder, builder, &block).as_json))
     end
 
-    # Uploads a document (e.g. a commercial invoice) to the UPS Paperless
-    # Document API and returns a parser exposing the created DocumentID.
-    #
-    # A pre-configured {Builders::PaperlessDocumentBuilder} object can be passed
-    # as the first option or a block yielded to configure a new one.
-    #
-    # @param [Builders::PaperlessDocumentBuilder] builder A pre-configured builder
-    # @yield [builder] A PaperlessDocumentBuilder for configuring the upload
-    def paperless_document_upload(builder = nil)
-      if builder.nil? && block_given?
-        builder = UPS::Builders::PaperlessDocumentBuilder.new
-        yield builder
-      end
-
-      response = get_response(PAPERLESS_UPLOAD_PATH, builder.as_json, "post",
-        "ShipperNumber" => builder.shipper_number)
-      UPS::Parsers::PaperlessDocumentParser.new(response.body)
+    # Uploads customs documents to UPS Paperless. Yields a {Builders::PaperlessDocumentBuilder} unless one is given.
+    def paperless_document_upload(builder = nil, &block)
+      builder = build(Builders::PaperlessDocumentBuilder, builder, &block)
+      Parsers::PaperlessDocumentParser.new(post(PAPERLESS_UPLOAD_PATH, builder.as_json, "ShipperNumber" => builder.shipper_number))
     end
 
-    # Authorizes the connection with the UPS API
-    #
-    # @param [String] account_number Account number to use for the request
-    # @param [String] client_id Client ID to use
-    # @param [String] client_secret Client secret to use
-    # @param [Boolean] mock If the request should be mocked
-    # @return [void]
-    def authorize(account_number = "", client_id = "", client_secret = "", mock = false)
-      if @token_data && !@token_data.nil? && !@token_data.empty?
-        return nil
-      end
-
-      if mock
-        self.account_number = account_number
-        self.client_id = client_id
-        self.client_secret = client_secret
-
-        @token_data = {
-          "access_token" => "test_token",
-          "expires_in" => 189200000, # 6 years
-          "issued_at" => Time.now.to_i,
-          "refresh_token" => "test_refresh_token"
-        }
-
-        return nil
-      end
-
-      # Make sure we were given credentials for OAuth
-      if account_number.nil? || account_number.empty? || client_id.nil? || client_id.empty? || client_id.nil? || client_secret.empty?
-        fail Exceptions::AuthorizationError,
-          "Missing account_number, client_id, or client_secret"
-      end
-
-      self.account_number = account_number
-      self.client_id = client_id
-      self.client_secret = client_secret
-
-      create_token
+    # Books a driver to collect parcels. Yields a {Builders::PickupBuilder} unless one is given.
+    def pickup(builder = nil, &block)
+      Parsers::PickupParser.new(post(PICKUP_PATH, build(Builders::PickupBuilder, builder, &block).as_json))
     end
 
-    # Retrieves the access token, or refreshes it if it has expired
-    #
-    # @return [String] The access token
-    def get_access_token
-      if @token_data.nil?
-        fail Exceptions::AuthorizationError,
-          "No token data found, please call authorize first"
-      end
+    # The current access token, requesting a new one when there is none yet or
+    # the previous one expired.
+    def access_token
+      raise Exceptions::AuthorizationError, "No credentials, call authorize first" unless authorized?
 
-      issued_at = @token_data["issued_at"].to_i
-      expires_in = @token_data["expires_in"].to_i
-      current_time = Time.now.to_i
-
-      # Token is expired, refresh it
-      if issued_at + expires_in <= current_time
-        refresh_token(@token_data["refresh_token"])
-      end
-
-      @token_data["access_token"]
+      @token = request_token if @token.nil? || @token.expired?(@clock.call)
+      @token.access_token
     end
+    alias_method :get_access_token, :access_token
 
     private
 
-    def build_url(path)
-      "#{url}#{path}"
+    def build(builder_class, builder)
+      return builder unless builder.nil?
+
+      builder_class.new.tap { |fresh| yield fresh if block_given? }
     end
 
-    # Makes a request to the UPS API
-    #
-    # @param [String] path The path to make the request to
-    # @param [Optional, Hash] body The body to send with the request
-    # @param [Optional, String] method The method type to use for the request
-    # @return [Excon::Response] The response from the request
-    def get_response(path, body = {}, method = "post", extra_headers = {})
-      access_token = get_access_token
+    def post(path, body, extra_headers = {})
+      body_of Excon.post(url + path, headers: headers.merge(extra_headers), body: body.to_json)
+    end
 
-      headers = {
+    def get(path)
+      body_of Excon.get(url + path, headers: headers)
+    end
+
+    # UPS answers API failures with a JSON body which the parsers report through
+    # #success? and #error_description. Only a response that cannot carry such a
+    # body (a gateway error page, say) is raised here.
+    def body_of(response)
+      raise Exceptions::ResponseError.new(response.status, response.body) if response.status >= 500
+
+      response.body
+    end
+
+    def headers
+      {
         "Content-Type" => "application/json",
         "Authorization" => "Bearer #{access_token}",
-        "transId" => SecureRandom.hex(16), # Unique identifier for this request
-        "transactionSrc" => "testing" # Identifies client/source app that is calling, UPS has default of 'testing' (sometimes)
-      }.merge(extra_headers)
-
-      if method.downcase == "get"
-        Excon.get(
-          build_url(path),
-          headers: headers
-        )
-      else
-        Excon.post(
-          build_url(path),
-          headers: headers,
-          body: body.to_json
-        )
-      end
-    end
-
-    def make_confirm_request(confirm_builder)
-      make_ship_request(confirm_builder, SHIP_PATH, Parsers::ShipParser)
-    end
-
-    def make_ship_request(builder, path, ship_parser)
-      response = get_response(path, builder.as_json)
-      ship_parser.new(response.body)
-    end
-
-    # Creates a new access token
-    #
-    # @return [void]
-    def create_token
-      full_url = "#{url}/security/v1/oauth/token"
-      auth = "Basic #{Base64.strict_encode64("#{client_id}:#{client_secret}")}"
-
-      params = {
-        "grant_type" => "client_credentials"
+        "transId" => SecureRandom.hex(16),
+        "transactionSrc" => transaction_source
       }
-
-      begin
-        response = Excon.post(
-          full_url,
-          body: URI.encode_www_form(params),
-          headers: {
-            "Content-Type" => "application/x-www-form-urlencoded",
-            "x-merchant-id" => account_number,
-            "Authorization" => auth
-          }
-        )
-
-        if response.status == 200
-          @token_data = JSON.parse(response.body)
-        else
-          raise "Unexpected response status: #{response.status}"
-        end
-      rescue Excon::Errors::Timeout
-        fail Exceptions::AuthorizationError, "Token creation request timed out"
-      rescue Excon::Errors::SocketError
-        fail Exceptions::AuthorizationError,
-          "Token creation request failed due to socket error"
-      rescue => e
-        fail Exceptions::AuthorizationError,
-          "Token creation request failed: #{e.message}"
-      end
     end
 
-    # Refreshes the access token once it has expired
-    #
-    # @param [String] refresh_token Refresh token to use for the request
-    # @return [void]
-    def refresh_token(refresh_token)
-      full_url = "#{url}/security/v1/oauth/refresh"
-      auth = "Basic #{Base64.strict_encode64("#{client_id}:#{client_secret}")}"
-
-      params = {
-        "grant_type" => "refresh_token",
-        "refresh_token" => refresh_token
-      }
-
-      begin
-        response = Excon.post(
-          full_url,
-          body: URI.encode_www_form(params),
-          headers: {
-            "Content-Type" => "application/x-www-form-urlencoded",
-            "Authorization" => auth
-          }
-        )
-
-        if response.status == 200
-          @token_data = JSON.parse(response.body)
-        else
-          raise "Unexpected response status: #{response.status}"
-        end
-      rescue Excon::Errors::Timeout
-        fail Exceptions::AuthorizationError, "Token refresh request timed out"
-      rescue Excon::Errors::SocketError
-        fail Exceptions::AuthorizationError,
-          "Token refresh request failed due to socket error"
-      rescue => e
-        fail Exceptions::AuthorizationError,
-          "Token refresh request failed: #{e.message}"
+    def request_token
+      response = Excon.post(
+        url + TOKEN_PATH,
+        body: URI.encode_www_form(grant_type: "client_credentials"),
+        headers: {
+          "Content-Type" => "application/x-www-form-urlencoded",
+          "x-merchant-id" => account_number,
+          "Authorization" => "Basic #{Base64.strict_encode64("#{client_id}:#{client_secret}")}"
+        }
+      )
+      unless response.status == 200
+        raise Exceptions::AuthorizationError, "Token request failed with HTTP #{response.status}: #{response.body.to_s[0, 200]}"
       end
+
+      data = JSON.parse(response.body)
+      Token.new(data.fetch("access_token"), @clock.call + data.fetch("expires_in").to_i - TOKEN_EXPIRY_MARGIN)
+    rescue Excon::Error, JSON::ParserError, KeyError => e
+      raise Exceptions::AuthorizationError, "Token request failed: #{e.message}"
     end
   end
 end

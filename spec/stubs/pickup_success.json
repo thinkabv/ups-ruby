@@ -1,0 +1,32 @@
+{
+  "PickupCreationResponse": {
+    "Response": {
+      "ResponseStatus": {
+        "Code": "1",
+        "Description": "Success"
+      },
+      "TransactionReference": {
+        "CustomerContext": ""
+      }
+    },
+    "PRN": "GPE58AB041C",
+    "RateStatus": {
+      "Code": "01",
+      "Description": "Rate available"
+    },
+    "RateResult": {
+      "RateType": "01",
+      "CurrencyCode": "EUR",
+      "ChargeDetail": [
+        {
+          "ChargeCode": "C",
+          "ChargeDescription": "On-call pickup",
+          "ChargeAmount": "0.00",
+          "TaxAmount": "0.00"
+        }
+      ],
+      "TotalTax": "0.00",
+      "GrandTotalOfAllCharge": "0.00"
+    }
+  }
+}

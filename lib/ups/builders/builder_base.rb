@@ -144,7 +144,7 @@ module UPS
         all[name].merge!(root)
 
         if shipment_service_options.size > 0
-          shipment_root.merge!({"ShipmentServiceOptions" => shipment_service_options})
+          shipment_root["ShipmentServiceOptions"] = shipment_service_options
         end
 
         all[name]["Shipment"] = shipment_root

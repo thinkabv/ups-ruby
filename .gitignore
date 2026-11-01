@@ -23,3 +23,6 @@ doc/
 *.komodoproject
 test.rb
 *.sublime-*
+
+# A gem does not pin its dependencies; the host application does.
+Gemfile.lock

@@ -1,12 +1,39 @@
 # frozen_string_literal: true
 
-require "uri"
+require "date"
 
 module UPS
   module Parsers
+    # The latest activity of a tracked package.
     class TrackParser < BaseParser
+      DELIVERED = "D"
+
       def initialize(response)
-        super(response.gsub('\"', '"').gsub("\\n", "\n"))
+        # The track endpoint has been seen returning its body with escaped
+        # quotes and newlines; undo that before parsing.
+        super(response.gsub('\\"', '"').gsub("\\n", "\n"))
+      end
+
+      # False when UPS has no activity for the number (yet).
+      def found?
+        !latest_activity.nil?
+      end
+
+      def delivered?
+        status_type_code == DELIVERED
+      end
+
+      def status_date
+        date = latest_activity&.dig(:date)
+        Date.parse(date) if date
+      end
+
+      def status_type_description
+        latest_activity&.dig(:status, :description)
+      end
+
+      def status_type_code
+        latest_activity&.dig(:status, :type)
       end
 
       def as_json
@@ -17,31 +44,15 @@ module UPS
         }
       end
 
-      def status_date
-        Date.parse(latest_activity[:date])
-      end
-
-      def status_type_description
-        status_type[:description]
-      end
-
-      def status_type_code
-        status_type[:type]
-      end
-
-      private
-
-      def status_type
-        latest_activity[:status]
-      end
-
       def latest_activity
-        activities.max_by { |a| [a[:gmtDate], a[:gmtTime]] }
+        activities.max_by { |activity| [activity[:gmtDate], activity[:gmtTime]] }
       end
 
       def activities
-        normalize_response_into_array(root_response[:shipment][0][:package][0][:activity])
+        array(parsed_response.dig(:trackResponse, :shipment, 0, :package, 0, :activity))
       end
+
+      private
 
       def root_response
         parsed_response[:trackResponse]

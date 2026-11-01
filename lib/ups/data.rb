@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "levenshtein"
-
 module UPS
   module Data
     class << self
@@ -12,10 +10,8 @@ module UPS
       # @param [String] string The Irish State to normalize
       # @return [String] The normalized Irish state name
       def ie_state_normalizer(string)
-        string.tap do |target|
-          IE_COUNTY_PREFIXES.each do |prefix|
-            target.gsub!(/^#{Regexp.escape(prefix.downcase)} /i, "")
-          end
+        IE_COUNTY_PREFIXES.reduce(string) do |target, prefix|
+          target.sub(/^#{Regexp.escape(prefix.downcase)} /i, "")
         end
       end
 
@@ -28,15 +24,12 @@ module UPS
       # @return [String] The closest matching irish state with the specified
       #   name
       def ie_state_matcher(match_string)
-        fail Exceptions::InvalidAttributeError, EMPTY_STATE_MESSAGE if
-          match_string.nil? || match_string.empty?
+        if match_string.nil? || match_string.empty?
+          raise Exceptions::InvalidAttributeError, EMPTY_STATE_MESSAGE
+        end
 
         normalized_string = ie_state_normalizer string_normalizer match_string
-        counties_with_distances = IE_COUNTIES.map do |county|
-          [county, levenshtein_distance(county.downcase, normalized_string)]
-        end
-        counties_with_distances_hash = Hash[*counties_with_distances.flatten]
-        counties_with_distances_hash.min_by { |_k, v| v }[0]
+        IE_COUNTIES.min_by { |county| levenshtein_distance(county.downcase, normalized_string) }
       end
 
       # Removes extra characters from a string
@@ -46,6 +39,21 @@ module UPS
       # @return [String] The normalized string
       def string_normalizer(string)
         string.downcase.gsub(/[^0-9a-z ]/i, "")
+      end
+
+      private
+
+      # Edit distance between two strings.
+      def levenshtein_distance(from, to)
+        previous = (0..to.length).to_a
+        from.each_char.with_index(1) do |char, row|
+          current = [row]
+          to.each_char.with_index(1) do |other, column|
+            current << [previous[column] + 1, current[column - 1] + 1, previous[column - 1] + ((char == other) ? 0 : 1)].min
+          end
+          previous = current
+        end
+        previous.last
       end
     end
   end

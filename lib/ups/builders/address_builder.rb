@@ -31,7 +31,7 @@ module UPS
       #   empty string and the :country is IE
       # @return [void]
       def validate
-        opts[:state] = case opts[:country].downcase
+        opts[:state] = case opts[:country].to_s.downcase
         when "us"
           normalize_us_state(opts[:state])
         when "ca"

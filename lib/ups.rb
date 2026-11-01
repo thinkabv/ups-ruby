@@ -24,13 +24,13 @@ module UPS
 
   module Parsers
     autoload :BaseParser, "ups/parsers/base_parser"
-    autoload :ParserBase, "ups/parsers/parser_base"
     autoload :RatesParser, "ups/parsers/rates_parser"
     autoload :RateParser, "ups/parsers/rate_parser"
     autoload :ShipParser, "ups/parsers/ship_parser"
     autoload :TrackParser, "ups/parsers/track_parser"
     autoload :LabelParser, "ups/parsers/label_parser"
     autoload :PaperlessDocumentParser, "ups/parsers/paperless_document_parser"
+    autoload :PickupParser, "ups/parsers/pickup_parser"
   end
 
   module Builders
@@ -44,5 +44,6 @@ module UPS
     autoload :ShipperBuilder, "ups/builders/shipper_builder"
     autoload :LabelRecoveryRequestBuilder, "ups/builders/label_recovery_request_builder"
     autoload :PaperlessDocumentBuilder, "ups/builders/paperless_document_builder"
+    autoload :PickupBuilder, "ups/builders/pickup_builder"
   end
 end

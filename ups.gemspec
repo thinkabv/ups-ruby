@@ -1,24 +1,21 @@
-require File.expand_path("../lib/ups/version", __FILE__)
-require "English"
+require_relative "lib/ups/version"
 
 Gem::Specification.new do |gem|
   gem.name = "ups-ruby"
   gem.version = UPS::Version::STRING
-  gem.platform = Gem::Platform::RUBY
-  gem.authors = ["Veeqo"]
-  gem.email = ["helpme@veeqo.com"]
-  gem.homepage = "https://github.com/veeqo/ups-ruby"
-  gem.summary = "UPS"
-  gem.description = "UPS Gem for accessing the UPS API from Ruby"
-
+  gem.authors = ["Thinka B.V."]
+  gem.email = ["support@thinka.eu"]
+  gem.homepage = "https://github.com/thinkabv/ups-ruby"
+  gem.summary = "UPS REST API client"
+  gem.description = "Rating, shipping, tracking, label recovery, paperless documents and pickups " \
+    "through the UPS REST (OAuth, JSON) API. Thinka's fork of veeqo/ups-ruby."
   gem.license = "MIT"
 
-  gem.required_rubygems_version = ">= 1.3.6"
+  gem.required_ruby_version = ">= 3.2"
 
-  gem.add_runtime_dependency "ox", "~> 2.2", ">= 2.2.0"
-  gem.add_runtime_dependency "excon", "~> 0.45", ">= 0.45.3"
-  gem.add_runtime_dependency "insensitive_hash", "~> 0.3.3"
+  gem.add_dependency "excon", ">= 0.100"
+  gem.add_dependency "insensitive_hash", "~> 0.3.3"
 
-  gem.files = `git ls-files`.split($OUTPUT_RECORD_SEPARATOR)
-  gem.require_path = "lib"
+  gem.files = Dir["lib/**/*.rb", "LICENSE.txt", "README.md"]
+  gem.require_paths = ["lib"]
 end

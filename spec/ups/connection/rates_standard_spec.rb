@@ -175,7 +175,7 @@ describe UPS::Connection do
         it "returns error" do
           expect(subject).wont_equal false
           expect(subject.success?).must_equal false
-          expect(subject.error_description).must_equal "Packages must weigh more than zero kg."
+          expect(subject.error_description).must_equal "The requested service is unavailable between the selected locations. Please check your Documents Only, Letter/Envelope, and Saturday Delivery settings as these may affect service availability.; Packages must weigh more than zero kg."
         end
       end
     end
