@@ -4,13 +4,13 @@ describe UPS::Builders::LabelRecoveryRequestBuilder do
   describe "when adding only necessary items" do
     subject {
       UPS::Builders::LabelRecoveryRequestBuilder.new do |builder|
-        builder.add_tracking_number "1Z8Y7F409115810727"
+        builder.add_tracking_number "1Z12345E0205271688"
         builder.add_label_specification "gif"
       end
     }
 
     it "returns the correct tracking number" do
-      expect(subject.as_json["LabelRecoveryRequest"]["TrackingNumber"]).must_equal "1Z8Y7F409115810727"
+      expect(subject.as_json["LabelRecoveryRequest"]["TrackingNumber"]).must_equal "1Z12345E0205271688"
     end
 
     it "returns the correct label specification" do
@@ -21,14 +21,14 @@ describe UPS::Builders::LabelRecoveryRequestBuilder do
   describe "when adding only shipper number extra" do
     subject {
       UPS::Builders::LabelRecoveryRequestBuilder.new do |builder|
-        builder.add_tracking_number "1Z8Y7F409115810727"
+        builder.add_tracking_number "1Z12345E0205271688"
         builder.add_shipper_number "123456"
         builder.add_label_specification "gif"
       end
     }
 
     it "returns the correct tracking number" do
-      expect(subject.as_json["LabelRecoveryRequest"]["TrackingNumber"]).must_equal "1Z8Y7F409115810727"
+      expect(subject.as_json["LabelRecoveryRequest"]["TrackingNumber"]).must_equal "1Z12345E0205271688"
     end
 
     it "returns the correct shipper number" do
@@ -43,14 +43,14 @@ describe UPS::Builders::LabelRecoveryRequestBuilder do
   describe "when adding only reference number extra" do
     subject {
       UPS::Builders::LabelRecoveryRequestBuilder.new do |builder|
-        builder.add_tracking_number "1Z8Y7F409115810727"
+        builder.add_tracking_number "1Z12345E0205271688"
         builder.add_reference_number "rf1294"
         builder.add_label_specification "gif"
       end
     }
 
     it "returns the correct tracking number" do
-      expect(subject.as_json["LabelRecoveryRequest"]["TrackingNumber"]).must_equal "1Z8Y7F409115810727"
+      expect(subject.as_json["LabelRecoveryRequest"]["TrackingNumber"]).must_equal "1Z12345E0205271688"
     end
 
     it "returns the correct reference number" do
@@ -65,7 +65,7 @@ describe UPS::Builders::LabelRecoveryRequestBuilder do
   describe "when adding shipper number before reference number" do
     subject {
       UPS::Builders::LabelRecoveryRequestBuilder.new do |builder|
-        builder.add_tracking_number "1Z8Y7F409115810727"
+        builder.add_tracking_number "1Z12345E0205271688"
         builder.add_shipper_number "123456"
         builder.add_reference_number "rf1294"
         builder.add_label_specification "gif"
@@ -73,7 +73,7 @@ describe UPS::Builders::LabelRecoveryRequestBuilder do
     }
 
     it "returns the correct tracking number" do
-      expect(subject.as_json["LabelRecoveryRequest"]["TrackingNumber"]).must_equal "1Z8Y7F409115810727"
+      expect(subject.as_json["LabelRecoveryRequest"]["TrackingNumber"]).must_equal "1Z12345E0205271688"
     end
 
     it "returns the correct reference number" do
@@ -92,7 +92,7 @@ describe UPS::Builders::LabelRecoveryRequestBuilder do
   describe "when adding reference number before shipper number" do
     subject {
       UPS::Builders::LabelRecoveryRequestBuilder.new do |builder|
-        builder.add_tracking_number "1Z8Y7F409115810727"
+        builder.add_tracking_number "1Z12345E0205271688"
         builder.add_reference_number "rf1294"
         builder.add_shipper_number "123456"
         builder.add_label_specification "gif"
@@ -100,7 +100,7 @@ describe UPS::Builders::LabelRecoveryRequestBuilder do
     }
 
     it "returns the correct tracking number" do
-      expect(subject.as_json["LabelRecoveryRequest"]["TrackingNumber"]).must_equal "1Z8Y7F409115810727"
+      expect(subject.as_json["LabelRecoveryRequest"]["TrackingNumber"]).must_equal "1Z12345E0205271688"
     end
 
     it "returns the correct reference number" do
