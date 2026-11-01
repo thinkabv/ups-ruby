@@ -30,21 +30,21 @@ module UPS
       #
       # @return [Hash] JSON representation for shipper name
       def shipper_name
-        element_with_value('Name', opts[:company_name][0..34])
+        element_with_value("Name", opts[:company_name][0..34])
       end
 
       # Returns JSON representation of shipper phone number
       #
       # @return [Hash] JSON representation of shipper phone number
       def phone_number
-        multi_valued('Phone', 'Number' => opts[:phone_number][0..14])
+        multi_valued("Phone", "Number" => opts[:phone_number][0..14])
       end
 
       # Returns JSON representation of shipper account number
       #
       # @return [Hash] JSON representation of shipper account number
       def shipper_number
-        element_with_value('ShipperNumber', opts[:shipper_number] || '')
+        element_with_value("ShipperNumber", opts[:shipper_number] || "")
       end
 
       # Returns JSON representation of shipper address
@@ -58,37 +58,37 @@ module UPS
       #
       # @return [Hash] JSON representation of shipper attention name
       def attention_name
-        element_with_value('AttentionName', opts[:attention_name] || '')
+        element_with_value("AttentionName", opts[:attention_name] || "")
       end
 
       # Returns JSON representation of shipper tax identification number
       #
       # @return [Hash] JSON representation of shipper tax identification number
       def tax_identification_number
-        element_with_value('TaxIdentificationNumber', opts[:sender_tax_number] || '')
+        element_with_value("TaxIdentificationNumber", opts[:sender_tax_number] || "")
       end
 
       # Returns JSON representation of email address
       #
       # @return [Hash] JSON representation of email address
       def email_address
-        element_with_value('EMailAddress', opts[:email_address][0..49])
+        element_with_value("EMailAddress", opts[:email_address][0..49])
       end
 
       # Returns JSON representation of the shipper object
       #
       # @return [Hash] JSON representation of the shipper object
       def as_json
-        sh = element_with_value('Shipper', {})
-        sh['Shipper'].merge!(shipper_name,
-                             phone_number,
-                             shipper_number,
-                             address,
-                             attention_name,
-                             tax_identification_number)
+        sh = element_with_value("Shipper", {})
+        sh["Shipper"].merge!(shipper_name,
+          phone_number,
+          shipper_number,
+          address,
+          attention_name,
+          tax_identification_number)
 
         if opts[:email_address]
-          sh['Shipper'].merge!(email_address)
+          sh["Shipper"].merge!(email_address)
         end
 
         sh

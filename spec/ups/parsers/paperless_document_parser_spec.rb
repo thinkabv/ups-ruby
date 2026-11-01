@@ -5,7 +5,7 @@ describe UPS::Parsers::PaperlessDocumentParser do
 
   describe "with a single DocumentID" do
     let(:response) do
-      { UploadResponse: { FormsHistoryDocumentID: { DocumentID: ["1Z2345678901234567890ABCDE"] } } }.to_json
+      {UploadResponse: {FormsHistoryDocumentID: {DocumentID: ["1Z2345678901234567890ABCDE"]}}}.to_json
     end
 
     it "extracts the DocumentID" do
@@ -20,7 +20,7 @@ describe UPS::Parsers::PaperlessDocumentParser do
 
   describe "with multiple DocumentIDs" do
     let(:response) do
-      { UploadResponse: { FormsHistoryDocumentID: { DocumentID: %w[AAA BBB] } } }.to_json
+      {UploadResponse: {FormsHistoryDocumentID: {DocumentID: %w[AAA BBB]}}}.to_json
     end
 
     it "returns all DocumentIDs" do
@@ -30,7 +30,7 @@ describe UPS::Parsers::PaperlessDocumentParser do
   end
 
   describe "without a DocumentID" do
-    let(:response) { { UploadResponse: {} }.to_json }
+    let(:response) { {UploadResponse: {}}.to_json }
 
     it "is not successful and has no DocumentID" do
       expect(subject.success?).must_equal false

@@ -1,5 +1,5 @@
-require 'spec_helper'
-require 'support/shipping_options'
+require "spec_helper"
+require "support/shipping_options"
 
 describe UPS::Connection do
   describe "when setting test mode" do

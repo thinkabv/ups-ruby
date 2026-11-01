@@ -32,19 +32,19 @@ module UPS
       # @return [void]
       def validate
         opts[:state] = case opts[:country].downcase
-                       when 'us'
-                         normalize_us_state(opts[:state])
-                       when 'ca'
-                         normalize_ca_state(opts[:state])
-                       when 'ie'
-                         if opts[:skip_ireland_state_validation]
-                           '_' # UPS requires at least one character for Ireland
-                         else
-                           UPS::Data.ie_state_matcher(opts[:state])
-                         end
-                       else
-                         ''
-                       end
+        when "us"
+          normalize_us_state(opts[:state])
+        when "ca"
+          normalize_ca_state(opts[:state])
+        when "ie"
+          if opts[:skip_ireland_state_validation]
+            "_" # UPS requires at least one character for Ireland
+          else
+            UPS::Data.ie_state_matcher(opts[:state])
+          end
+        else
+          ""
+        end
       end
 
       # Changes :state based on UPS requirements for US Addresses
@@ -89,37 +89,37 @@ module UPS
       #
       # @return [Hash] JSON representation of the city address part
       def city
-        element_with_value('City', opts[:city][0..29])
+        element_with_value("City", opts[:city][0..29])
       end
 
       # Returns JSON representation of state
       #
       # @return [Hash] JSON representation of the state address part
       def state
-        element_with_value('StateProvinceCode', opts[:state][0..4])
+        element_with_value("StateProvinceCode", opts[:state][0..4])
       end
 
       # Returns JSON representation of postal code
       #
       # @return [Hash] JSON representation of the postal code address part
       def postal_code
-        element_with_value('PostalCode', opts[:postal_code][0..8])
+        element_with_value("PostalCode", opts[:postal_code][0..8])
       end
 
       # Returns JSON representation of country
       #
       # @return [Hash] JSON representation of the country address part
       def country
-        element_with_value('CountryCode', opts[:country][0..1])
+        element_with_value("CountryCode", opts[:country][0..1])
       end
 
       # Returns JSON representation of the full address
       #
       # @return [Hash] JSON representation of the full address
       def as_json
-        addr = element_with_value('Address', {})
-        addr['Address'].merge!(city,
-                               country)
+        addr = element_with_value("Address", {})
+        addr["Address"].merge!(city,
+          country)
 
         addr_lines = []
         if opts[:address_line_1]
@@ -130,15 +130,15 @@ module UPS
         end
 
         if addr_lines.any?
-          addr['Address'].merge!(element_with_value('AddressLine', addr_lines))
+          addr["Address"].merge!(element_with_value("AddressLine", addr_lines))
         end
 
         if opts[:state]
-          addr['Address'].merge!(state)
+          addr["Address"].merge!(state)
         end
 
         if opts[:postal_code]
-          addr['Address'].merge!(postal_code)
+          addr["Address"].merge!(postal_code)
         end
 
         addr

@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require 'uri'
-require 'excon'
-require 'digest/md5'
-require 'ox'
-require 'base64'
-require 'json'
+require "uri"
+require "excon"
+require "digest/md5"
+require "ox"
+require "base64"
+require "json"
 
 module UPS
   # The {Connection} class acts as the main entry point to performing rate and
@@ -17,18 +17,18 @@ module UPS
   # @attr [String] url The base url to use either TEST_URL or LIVE_URL
   class Connection
     attr_accessor :url,
-                  :account_number,
-                  :client_id,
-                  :client_secret
+      :account_number,
+      :client_id,
+      :client_secret
 
-    TEST_URL = 'https://wwwcie.ups.com'
-    LIVE_URL = 'https://onlinetools.ups.com'
+    TEST_URL = "https://wwwcie.ups.com"
+    LIVE_URL = "https://onlinetools.ups.com"
 
-    RATE_VERSION = 'v2403'
-    SHIP_VERSION = 'v2403'
-    TRACK_VERSION = 'v1'
-    LABEL_VERSION = 'v1'
-    PAPERLESS_VERSION = 'v2'
+    RATE_VERSION = "v2403"
+    SHIP_VERSION = "v2403"
+    TRACK_VERSION = "v1"
+    LABEL_VERSION = "v1"
+    PAPERLESS_VERSION = "v2"
 
     RATE_PATH = "/api/rating/#{RATE_VERSION}/Shop"
     SHIP_PATH = "/api/shipments/#{SHIP_VERSION}/ship"
@@ -96,10 +96,10 @@ module UPS
     # @param [String] number Tracking number to request status for
     def track(number)
       if number.empty?
-        fail Exceptions::InvalidAttributeError, 'Tracking number is required'
+        fail Exceptions::InvalidAttributeError, "Tracking number is required"
       end
 
-      response = get_response(TRACK_PATH + "/#{number}", {}, 'GET')
+      response = get_response(TRACK_PATH + "/#{number}", {}, "GET")
       UPS::Parsers::TrackParser.new(response.body)
     end
 
@@ -137,8 +137,8 @@ module UPS
         yield builder
       end
 
-      response = get_response(PAPERLESS_UPLOAD_PATH, builder.as_json, 'post',
-                              'ShipperNumber' => builder.shipper_number)
+      response = get_response(PAPERLESS_UPLOAD_PATH, builder.as_json, "post",
+        "ShipperNumber" => builder.shipper_number)
       UPS::Parsers::PaperlessDocumentParser.new(response.body)
     end
 
@@ -149,7 +149,7 @@ module UPS
     # @param [String] client_secret Client secret to use
     # @param [Boolean] mock If the request should be mocked
     # @return [void]
-    def authorize(account_number = '', client_id = '', client_secret = '', mock = false)
+    def authorize(account_number = "", client_id = "", client_secret = "", mock = false)
       if @token_data && !@token_data.nil? && !@token_data.empty?
         return nil
       end
@@ -160,10 +160,10 @@ module UPS
         self.client_secret = client_secret
 
         @token_data = {
-          'access_token' => 'test_token',
-          'expires_in' => 189200000, # 6 years
-          'issued_at' => Time.now.to_i,
-          'refresh_token' => 'test_refresh_token'
+          "access_token" => "test_token",
+          "expires_in" => 189200000, # 6 years
+          "issued_at" => Time.now.to_i,
+          "refresh_token" => "test_refresh_token"
         }
 
         return nil
@@ -172,7 +172,7 @@ module UPS
       # Make sure we were given credentials for OAuth
       if account_number.nil? || account_number.empty? || client_id.nil? || client_id.empty? || client_id.nil? || client_secret.empty?
         fail Exceptions::AuthorizationError,
-             'Missing account_number, client_id, or client_secret'
+          "Missing account_number, client_id, or client_secret"
       end
 
       self.account_number = account_number
@@ -188,19 +188,19 @@ module UPS
     def get_access_token
       if @token_data.nil?
         fail Exceptions::AuthorizationError,
-             'No token data found, please call authorize first'
+          "No token data found, please call authorize first"
       end
 
-      issued_at = @token_data['issued_at'].to_i
-      expires_in = @token_data['expires_in'].to_i
+      issued_at = @token_data["issued_at"].to_i
+      expires_in = @token_data["expires_in"].to_i
       current_time = Time.now.to_i
 
       # Token is expired, refresh it
       if issued_at + expires_in <= current_time
-        refresh_token(@token_data['refresh_token'])
+        refresh_token(@token_data["refresh_token"])
       end
 
-      @token_data['access_token']
+      @token_data["access_token"]
     end
 
     private
@@ -215,17 +215,17 @@ module UPS
     # @param [Optional, Hash] body The body to send with the request
     # @param [Optional, String] method The method type to use for the request
     # @return [Excon::Response] The response from the request
-    def get_response(path, body = {}, method = 'post', extra_headers = {})
+    def get_response(path, body = {}, method = "post", extra_headers = {})
       access_token = get_access_token
 
       headers = {
-        'Content-Type' => 'application/json',
-        'Authorization' => "Bearer #{access_token}",
-        'transId' => SecureRandom.hex(16), # Unique identifier for this request
-        'transactionSrc' => 'testing' # Identifies client/source app that is calling, UPS has default of 'testing' (sometimes)
+        "Content-Type" => "application/json",
+        "Authorization" => "Bearer #{access_token}",
+        "transId" => SecureRandom.hex(16), # Unique identifier for this request
+        "transactionSrc" => "testing" # Identifies client/source app that is calling, UPS has default of 'testing' (sometimes)
       }.merge(extra_headers)
 
-      if method.downcase == 'get'
+      if method.downcase == "get"
         Excon.get(
           build_url(path),
           headers: headers
@@ -256,7 +256,7 @@ module UPS
       auth = "Basic #{Base64.strict_encode64("#{client_id}:#{client_secret}")}"
 
       params = {
-        'grant_type' => 'client_credentials'
+        "grant_type" => "client_credentials"
       }
 
       begin
@@ -264,9 +264,9 @@ module UPS
           full_url,
           body: URI.encode_www_form(params),
           headers: {
-            'Content-Type' => 'application/x-www-form-urlencoded',
-            'x-merchant-id' => account_number,
-            'Authorization' => auth
+            "Content-Type" => "application/x-www-form-urlencoded",
+            "x-merchant-id" => account_number,
+            "Authorization" => auth
           }
         )
 
@@ -276,13 +276,13 @@ module UPS
           raise "Unexpected response status: #{response.status}"
         end
       rescue Excon::Errors::Timeout
-        fail Exceptions::AuthorizationError, 'Token creation request timed out'
+        fail Exceptions::AuthorizationError, "Token creation request timed out"
       rescue Excon::Errors::SocketError
         fail Exceptions::AuthorizationError,
-             'Token creation request failed due to socket error'
-      rescue StandardError => e
+          "Token creation request failed due to socket error"
+      rescue => e
         fail Exceptions::AuthorizationError,
-             "Token creation request failed: #{e.message}"
+          "Token creation request failed: #{e.message}"
       end
     end
 
@@ -295,8 +295,8 @@ module UPS
       auth = "Basic #{Base64.strict_encode64("#{client_id}:#{client_secret}")}"
 
       params = {
-        'grant_type' => 'refresh_token',
-        'refresh_token' => refresh_token
+        "grant_type" => "refresh_token",
+        "refresh_token" => refresh_token
       }
 
       begin
@@ -304,8 +304,8 @@ module UPS
           full_url,
           body: URI.encode_www_form(params),
           headers: {
-            'Content-Type' => 'application/x-www-form-urlencoded',
-            'Authorization' => auth
+            "Content-Type" => "application/x-www-form-urlencoded",
+            "Authorization" => auth
           }
         )
 
@@ -315,13 +315,13 @@ module UPS
           raise "Unexpected response status: #{response.status}"
         end
       rescue Excon::Errors::Timeout
-        fail Exceptions::AuthorizationError, 'Token refresh request timed out'
+        fail Exceptions::AuthorizationError, "Token refresh request timed out"
       rescue Excon::Errors::SocketError
         fail Exceptions::AuthorizationError,
-             'Token refresh request failed due to socket error'
-      rescue StandardError => e
+          "Token refresh request failed due to socket error"
+      rescue => e
         fail Exceptions::AuthorizationError,
-             "Token refresh request failed: #{e.message}"
+          "Token refresh request failed: #{e.message}"
       end
     end
   end

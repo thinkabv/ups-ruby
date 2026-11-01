@@ -15,15 +15,15 @@ module UPS
       end
 
       def description
-        element_with_value('Description', opts[:description])
+        element_with_value("Description", opts[:description])
       end
 
       def number
-        element_with_value('Number', opts[:number].to_s)
+        element_with_value("Number", opts[:number].to_s)
       end
 
       def value
-        element_with_value('Value', opts[:value].to_s)
+        element_with_value("Value", opts[:value].to_s)
       end
 
       def dimensions_unit
@@ -31,20 +31,20 @@ module UPS
       end
 
       def part_number
-        element_with_value('PartNumber', opts[:part_number][0..9])
+        element_with_value("PartNumber", opts[:part_number][0..9])
       end
 
       def commodity_code
-        element_with_value('CommodityCode', opts[:commodity_code][0..14])
+        element_with_value("CommodityCode", opts[:commodity_code][0..14])
       end
 
       def origin_country_code
-        element_with_value('OriginCountryCode', opts[:origin_country_code][0..2])
+        element_with_value("OriginCountryCode", opts[:origin_country_code][0..2])
       end
 
       def product_unit
-        unit = element_with_value('Unit', {})
-        unit['Unit'].merge!(number, value, dimensions_unit)
+        unit = element_with_value("Unit", {})
+        unit["Unit"].merge!(number, value, dimensions_unit)
 
         unit
       end
@@ -55,8 +55,8 @@ module UPS
       def as_json
         product = {}
         product.merge!(description,
-                       origin_country_code,
-                       product_unit)
+          origin_country_code,
+          product_unit)
 
         if opts[:commodity_code]
           product.merge!(commodity_code)

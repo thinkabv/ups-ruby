@@ -25,21 +25,21 @@ module UPS
       def label_graphic_image
         if @is_label
           return Utils.base64_to_file(package_result[:LabelImage][:GraphicImage],
-                                      label_graphic_extension)
+            label_graphic_extension)
         end
 
         Utils.base64_to_file(package_result[:ShippingLabel][:GraphicImage],
-                             label_graphic_extension)
+          label_graphic_extension)
       end
 
       def label_html_image
         if @is_label
           return Utils.base64_to_file(package_result[:LabelImage][:HTMLImage],
-                                      label_graphic_extension)
+            label_graphic_extension)
         end
 
         Utils.base64_to_file(package_result[:ShippingLabel][:HTMLImage],
-                             label_graphic_extension)
+          label_graphic_extension)
       end
 
       def form

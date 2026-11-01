@@ -1,10 +1,11 @@
 # frozen_string_literal: true
-require 'levenshtein'
+
+require "levenshtein"
 
 module UPS
   module Data
     class << self
-      EMPTY_STATE_MESSAGE = 'Invalid Address State [:state]'
+      EMPTY_STATE_MESSAGE = "Invalid Address State [:state]"
 
       # Normalizes Irish states as per UPS requirements
       #
@@ -13,7 +14,7 @@ module UPS
       def ie_state_normalizer(string)
         string.tap do |target|
           IE_COUNTY_PREFIXES.each do |prefix|
-            target.gsub!(/^#{Regexp.escape(prefix.downcase)} /i, '')
+            target.gsub!(/^#{Regexp.escape(prefix.downcase)} /i, "")
           end
         end
       end
@@ -44,7 +45,7 @@ module UPS
       #   characters
       # @return [String] The normalized string
       def string_normalizer(string)
-        string.downcase.gsub(/[^0-9a-z ]/i, '')
+        string.downcase.gsub(/[^0-9a-z ]/i, "")
       end
     end
   end

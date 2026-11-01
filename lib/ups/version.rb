@@ -7,6 +7,6 @@ module UPS
     PATCH = 1
     BUILD = nil
 
-    STRING = [MAJOR, MINOR, PATCH, BUILD].compact.join('.')
+    STRING = [MAJOR, MINOR, PATCH, BUILD].compact.join(".")
   end
 end

@@ -29,7 +29,7 @@ describe UPS::Builders::InternationalInvoiceBuilder do
   end
 
   it "attaches the uploaded document id" do
-    expect(subject["UserCreatedForm"]).must_equal({ "DocumentID" => ["1Z2345678901234567890ABCDE"] })
+    expect(subject["UserCreatedForm"]).must_equal({"DocumentID" => ["1Z2345678901234567890ABCDE"]})
   end
 
   it "includes the product commodity code" do

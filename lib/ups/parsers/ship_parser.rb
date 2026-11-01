@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'base64'
-require 'tempfile'
+require "base64"
+require "tempfile"
 
 module UPS
   module Parsers
@@ -44,7 +44,7 @@ module UPS
         return unless has_form_graphic?
 
         Utils.base64_to_file(form_graphic[:Image][:GraphicImage],
-                             form_graphic_extension)
+          form_graphic_extension)
       end
 
       def packages

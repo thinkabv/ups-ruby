@@ -31,29 +31,29 @@ module UPS
       #
       # @return [Hash] JSON representation of company name
       def company_name
-        element_with_value('Name', opts[:company_name][0..34])
+        element_with_value("Name", opts[:company_name][0..34])
       end
 
       # Returns JSON representation of phone number
       #
       # @return [Hash] JSON representation of phone number
       def phone_number
-        multi_valued('Phone', 'Number' => opts[:phone_number][0..14])
+        multi_valued("Phone", "Number" => opts[:phone_number][0..14])
       end
 
       # Returns JSON representation of attention name
       #
       # @return [Hash] JSON representation of attention name
       def attention_name
-        element_with_value('AttentionName', opts[:attention_name][0..34])
+        element_with_value("AttentionName", opts[:attention_name][0..34])
       end
 
       # Returns JSON representation of tax identification number of the company
       #
       # @return [Hash] JSON representation of tax identification number
       def tax_identification_number
-        element_with_value('TaxIdentificationNumber',
-                           opts[:sender_tax_number] || '')
+        element_with_value("TaxIdentificationNumber",
+          opts[:sender_tax_number] || "")
       end
 
       # Returns an JSON representation of address
@@ -67,10 +67,10 @@ module UPS
       def as_json
         org = element_with_value(name, {})
         org[name].merge!(company_name,
-                         phone_number,
-                         attention_name,
-                         tax_identification_number,
-                         address)
+          phone_number,
+          attention_name,
+          tax_identification_number,
+          address)
 
         org
       end

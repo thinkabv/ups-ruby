@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'uri'
+require "uri"
 
 module UPS
   module Parsers
     class TrackParser < BaseParser
       def initialize(response)
-        super(response.gsub(/\\"/, '"').gsub(/\\n/, "\n"))
+        super(response.gsub('\"', '"').gsub("\\n", "\n"))
       end
 
       def as_json

@@ -11,10 +11,10 @@ def levenshtein_distance(str1, str2)
   # Fill the matrix
   (1...rows).each do |i|
     (1...cols).each do |j|
-      if str1[i - 1] == str2[j - 1]
-        dp[i][j] = dp[i - 1][j - 1] # No cost if characters are the same
+      dp[i][j] = if str1[i - 1] == str2[j - 1]
+        dp[i - 1][j - 1] # No cost if characters are the same
       else
-        dp[i][j] = [
+        [
           dp[i - 1][j],    # Deletion
           dp[i][j - 1],    # Insertion
           dp[i - 1][j - 1] # Substitution

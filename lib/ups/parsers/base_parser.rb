@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'uri'
-require 'ox'
-require 'json'
+require "uri"
+require "ox"
+require "json"
 
 module UPS
   module Parsers
@@ -14,14 +14,14 @@ module UPS
       end
 
       def success?
-        status_code == '1'
+        status_code == "1"
       end
 
       def status_code
         if root_response
           root_response[:Response][:ResponseStatus][:Code]
         else
-          '-1'
+          "-1"
         end
       end
 
@@ -29,7 +29,7 @@ module UPS
         if root_response
           root_response[:Response][:ResponseStatus][:Description]
         else
-          ''
+          ""
         end
       end
 

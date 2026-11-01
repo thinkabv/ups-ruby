@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'base64'
-require 'tempfile'
+require "base64"
+require "tempfile"
 
 module UPS
   module Parsers
